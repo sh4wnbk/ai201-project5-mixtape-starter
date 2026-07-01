@@ -104,7 +104,7 @@ Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually g
 
 **Fix:** Changed the return line to `[song.to_dict() for song in songs]`.
 
-**Side-effect check:** `tests/test_empty_playlist_returns_empty_list` still passes (an empty list sliced with `[:-1]` was already `[]`, so that path was accidentally safe before too). More importantly, I manually built a single-song playlist and called `get_playlist_songs` — this is the edge case most likely to have broken differently than the 5-song test suggests, since `[:-1]` on a length-1 list returns `[]` (looks like "empty playlist" rather than "one song missing"). Post-fix, the single-song playlist correctly returns 1 song.
+**Side-effect check:** Re-ran `tests/test_playlists.py` after the fix — all 3 tests pass, including `test_playlist_returns_songs_in_order` (the unanticipated second baseline failure), confirming the fix restored both correct count *and* correct order rather than just satisfying the count assertion. `test_empty_playlist_returns_empty_list` also still passes (an empty list sliced with `[:-1]` was already `[]`, so that path was accidentally safe before too). Beyond the suite, I manually built a single-song playlist and called `get_playlist_songs` — this is the edge case most likely to have broken differently than the 5-song test suggests, since `[:-1]` on a length-1 list returns `[]` (looks like "empty playlist" rather than "one song missing"). Post-fix, the single-song playlist correctly returns 1 song.
 
 ---
 
