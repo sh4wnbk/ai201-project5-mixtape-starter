@@ -6,6 +6,7 @@
 I used Claude Code to map the codebase (`app.py`, `models.py`, `routes/`, `services/`) before touching any bug, to actually reproduce all 5 bugs against seeded data (via `flask shell`-equivalent Python scripts, `curl` against the running dev server, and `pytest`) before fixing anything, to trace each route → service call chain, and to implement and commit the fixes below.
 
 Two honest verify/course-correct instances from this process:
+
 - The assignment's description of bug #2 (search returns duplicate rows) turned out **not to reproduce** in this environment. I checked the raw SQL directly and confirmed the join does fan out to 3 rows for a 3-tag song, but SQLAlchemy's `Query.all()` on a plain entity query auto-deduplicates by primary-key identity, so the duplication never reaches `to_dict()` — confirmed at the ORM layer and again over live HTTP (`GET /songs/search?q=a` returned 0 duplicated titles). I had to revise my root-cause write-up from "causes visible duplicates" to a latent/version-dependent risk, rather than restating the assignment's claimed symptom as observed fact.
 - For bug #5, my first reproduction attempt (checking `nova`'s own "listening now" feed) showed no visible problem — nova's friends all happened to have a very-recent event masking their older one via the per-friend dedup logic. I had to check across all 5 seeded users before finding a view (`kenji`'s) where a 2-hour-old event from `nova` incorrectly appeared as "listening now," which is what actually justified the threshold fix.
 - Separately, a baseline `pytest tests/` run before any fix surfaced an unexpected second playlist test failure (`test_playlist_returns_songs_in_order`) that I hadn't anticipated from the bug table alone — the reproduction step changed my understanding of the blast radius of bug #3 before I wrote its RCA entry.
@@ -15,23 +16,23 @@ Before this session, a per-line "surprise" scorer (`surprise.py`) was built and 
 
 Baseline result — scorer's top-flagged ("peak") line vs. the actual bug line, per file:
 
-| File | Bug line | Peak (baseline) | Distance | Rank of bug |
-|---|---|---|---|---|
-| streak_service.py | 72 | 68 | 4 | 3 |
-| search_service.py | 27 | 33 | 6 | 5 |
-| playlist_service.py | 66 | 29 | 37 | 14 |
-| feed_service.py | 13 | 49 | 36 | 6 |
+| File                 | Bug line | Peak (baseline) | Distance | Rank of bug |
+| -------------------- | -------- | --------------- | -------- | ----------- |
+| streak_service.py    | 72       | 68              | 4        | 3           |
+| search_service.py    | 27       | 33              | 6        | 5           |
+| playlist_service.py  | 66       | 29              | 37       | 14          |
+| feed_service.py      | 13       | 49              | 36       | 6           |
 
 (`notification_service.py` — the omission bug — wasn't in scope for this scorer; there's no line to flag when the bug is a *missing* line.)
 
 A/B result (line-reset vs. baseline):
 
-| File | Baseline dist | Line-reset dist |
-|---|---|---|
-| streak | 4 | 11 (worse) |
-| search | 6 | 5 |
-| playlist | 37 | 34 |
-| feed | 36 | 30 |
+| File     | Baseline dist | Line-reset dist |
+| -------- | -------------- | --------------- |
+| streak   | 4              | 11 (worse)      |
+| search   | 6              | 5               |
+| playlist | 37             | 34              |
+| feed     | 36             | 30              |
 
 Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually got **worse** (peak slid from line 68 to line 61). **Conclusion: the crosstalk hypothesis was falsified.** Scores were tied at a saturation ceiling (~7 bits), not smeared by boundary leakage — on the streak file, the previous line's context was carrying real signal, and isolating it lost information. Per-line naturalness scoring brackets bugs but doesn't localize them precisely (playlist and feed — the "invisible" omission/threshold-style bugs — stayed far off in both versions); execution-based tracing was the correct next step.
 
@@ -56,6 +57,7 @@ Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually g
 `POST /songs/<song_id>/rate` → `routes/songs.py:rate()` reads `user_id`/`score` from the JSON body → calls `notification_service.rate_song(user_id, song_id, score)` → validates the score range, looks up the `Song` and rating `User`, upserts a `Rating` row (update if one already exists for that user/song pair, else insert), commits, and (after this session's fix) notifies the song's original sharer via `create_notification()` unless the rater is the sharer themselves.
 
 **Patterns noticed:**
+
 - Routes are thin; services own logic and commit.
 - The `db.session.get(Model, id)` + `raise ValueError(...)` pattern (services) or direct `None` check (the one route that skips a service) is the consistent way "not found" is represented; routes uniformly translate `ValueError` into a 404 or 400.
 - Notification-worthy actions (`add_to_playlist`, and now `rate_song`) each guard against self-notification by comparing the acting user's ID to the song's `shared_by`.
@@ -137,6 +139,7 @@ Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually g
 ## Regression Test (stretch, +1pt)
 
 `tests/test_notifications.py` (new file, added alongside the Issue #4 fix) contains:
+
 - `test_rate_song_notifies_sharer` — rates a song shared by a different user and asserts exactly one notification of type `song_rated` is created for the sharer.
 - `test_rate_song_self_rating_does_not_notify` — rates a song shared by the same user who is rating it, and asserts no notification is created.
 
@@ -146,7 +149,7 @@ Both tests would have failed against the pre-fix code, since `rate_song` never c
 
 ## Commit History
 
-```
+```text
 $ git log --oneline bugfix/mixtape
 eb9fd02 fix: tighten friends-listening-now threshold from 24h to 1h
 278099a fix: notify song sharer when their song is rated
@@ -159,4 +162,4 @@ f5ea8f3 fix: return the last song in a playlist
 
 5 separate `fix:` commits on `bugfix/mixtape`, one per bug, each specific enough to identify the bug from the message alone.
 
-**Fork:** https://github.com/sh4wnbk/ai201-project5-mixtape-starter, branch `bugfix/mixtape`.
+**Fork:** <https://github.com/sh4wnbk/ai201-project5-mixtape-starter>, branch `bugfix/mixtape`.
