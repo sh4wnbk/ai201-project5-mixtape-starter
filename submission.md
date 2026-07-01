@@ -151,6 +151,9 @@ Both tests would have failed against the pre-fix code, since `rate_song` never c
 
 ```text
 $ git log --oneline bugfix/mixtape
+e0fdac9 docs: confirm test_playlist_returns_songs_in_order passes post-fix
+b08b5b9 docs: fix markdown lint issues in submission.md
+ef39648 docs: add submission.md with codebase map, RCA entries, and AI usage
 eb9fd02 fix: tighten friends-listening-now threshold from 24h to 1h
 278099a fix: notify song sharer when their song is rated
 f5ea8f3 fix: return the last song in a playlist
@@ -159,6 +162,8 @@ f5ea8f3 fix: return the last song in a playlist
 2dfdeaa Add .gitignore file and update README with setup instructions
 7b64551 initial commit
 ```
+
+(This block can never include the commit that adds it — editing this file to paste the log always produces one more commit after the paste. The commit that follows this one, if any, will only ever be another `docs:` commit updating this block; the 5 `fix:` commits above are final.)
 
 5 separate `fix:` commits on `bugfix/mixtape`, one per bug, each specific enough to identify the bug from the message alone.
 
