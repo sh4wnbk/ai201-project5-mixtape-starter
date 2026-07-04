@@ -60,7 +60,7 @@ Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually g
 
 - Routes are thin; services own logic and commit.
 - The `db.session.get(Model, id)` + `raise ValueError(...)` pattern (services) or direct `None` check (the one route that skips a service) is the consistent way "not found" is represented; routes uniformly translate `ValueError` into a 404 or 400.
-- Notification-worthy actions (`add_to_playlist`, and now `rate_song`) each guard against self-notification by comparing the acting user's ID to the song's `shared_by`.
+- Notification-worthy actions (`add_to_playlist`, and `rate_song`) each guard against self-notification by comparing the acting user's ID to the song's `shared_by`.
 
 ---
 
