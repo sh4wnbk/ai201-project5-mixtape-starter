@@ -54,7 +54,7 @@ Mean distance moved 20.8 → 20.0 — negligible, noise-level. Streak actually g
 - **`seed_data.py`** — populates 5 users with friendships, 10 tags, songs with varying tag counts, a mix of very-recent and hours-old `ListeningEvent`s, and 3 playlists.
 
 **Traced data flow — rating a song:**
-`POST /songs/<song_id>/rate` → `routes/songs.py:rate()` reads `user_id`/`score` from the JSON body → calls `notification_service.rate_song(user_id, song_id, score)` → validates the score range, looks up the `Song` and rating `User`, upserts a `Rating` row (update if one already exists for that user/song pair, else insert), commits, and (after this session's fix) notifies the song's original sharer via `create_notification()` unless the rater is the sharer themselves.
+`POST /songs/<song_id>/rate` → `routes/songs.py:rate()` reads `user_id`/`score` from the JSON body → calls `notification_service.rate_song(user_id, song_id, score)` → validates the score range, looks up the `Song` and rating `User`, upserts a `Rating` row (update if one already exists for that user/song pair, else insert), commits, and notifies the song's original sharer via `create_notification()` unless the rater is the sharer themselves.
 
 **Patterns noticed:**
 
